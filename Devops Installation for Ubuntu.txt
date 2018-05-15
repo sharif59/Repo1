@@ -1,0 +1,114 @@
+Java  https://tecadmin.net/install-oracle-java-8-ubuntu-via-ppa/
+-------
+# sudo add-apt-repository ppa:webupd8team/java
+# sudo apt-get update
+# sudo apt-get install oracle-java8-installer
+
+Java path
+# readlink -f /usr/bin/javac
+
+#vi  ~/.profile
+export JAVA_HOME="/usr/lib/jvm/java-8-oracle/"
+export PATH=$JAVA_HOME/bin:$PATH
+
+source .profile
+-----------------------------------------------------------------------------------
+Git ( https://help.ubuntu.com/lts/serverguide/git.html
+      https://help.ubuntu.com/lts/serverguide/version-control-system.html )
+----
+# sudo apt-get install git
+
+# git config --global user.email "sharif.sk59@gmail.com"
+# git config --global user.name "sharif59"
+-----------------------------------------------------------------------------------
+Maven
+-----
+# sudo apt-get install maven
+
+vi .profile
+export M2_HOME="/usr/share/maven"
+export PATH="$M2_HOME/bin:$PATH"
+
+source .profile
+
+-----------------------------------------------------------------------------------
+Ansible 
+--------
+$ sudo apt-get update
+$ sudo apt-get install software-properties-common
+$ sudo apt-add-repository ppa:ansible/ansible
+$ sudo apt-get update
+$ sudo apt-get install ansible
+-----------------------------------------------------------------------------------
+tomcat 8.0
+----------
+wget http://www-eu.apache.org/dist/tomcat/tomcat-8/v8.5.30/bin/apache-tomcat-8.5.30.tar.gz
+
+mv apache.tar.gz /opt
+tar xzf apache.tar.gz
+cd bin 
+sh startup.sh
+
+vi .profile
+export CATALINA_HOME="/opt/apache-tomcat-8.5.30"
+export $CATALINA_HOME/bin:$PATH
+
+source .profile
+
+-------------------------------------------------------------------------------------
+Jenkins
+-------
+# wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+
+Then add the following entry in your 
+# vi /etc/apt/sources.list:
+ deb https://pkg.jenkins.io/debian-stable binary/
+ :wq
+
+# sudo apt-get update
+# sudo apt-get install jenkins
+
+-------------------------------------------------------------------------------------
+Jfrog artifactory 
+-----------------
+wget wget https://bintray.com/jfrog/artifactory/download_file?file_path=jfrog-artifactory-oss-5.9.3.zip
+ls
+mv download_file\?file_path\=jfrog-artifactory-oss-5.9.3.zip /opt/
+unzip download_file\?file_path\=jfrog-artifactory-oss-5.9.3.zip
+cd artifactory-oss-5.9.3/
+cd bin
+ls
+./installService.sh
+systemctl start artifactory.service
+cp webapps/artifactory.war tomcat/
+http://50.112.154.246:8081/artifactory
+
+(Repository link:https://iamankesh@bitbucket.org/iamankesh/game-of-life.git)
+
+
+
+
+Docker installation
+-------------------
+installation
+------------
+# curl -fsSL get.docker.com -o get-docker.sh
+# sudo sh get-docker.sh
+
+uninstall
+---------
+
+# sudo apt-get purge docker-ce
+# sudo rm -rf /var/lib/docker
+
+
+
+<tomcat-users>
+ <role rolename="tomcat"/>
+ <role rolename="role1"/>
+ <role rolename="manager-gui">
+ <role rolename="manager-script">
+ <user username="tomcat" password="tomcat" role="manager-gui,manager-script"/>
+ <user username="both" password="both" roles="tomcat,role1"/>
+ <user username="role1" password="role1" roles="role1"/>
+</tomcat-users>
