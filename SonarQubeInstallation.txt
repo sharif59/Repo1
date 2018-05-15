@@ -1,0 +1,105 @@
+1. sonarqube
+2. sonarscanner
+
+1. sonarqube installation
+-------------------------
+download zip file 
+
+wget https://sonarsource.bintray.com/Distribution/sonarqube/sonarqube-6.7.3.zip
+
+unzip sonar..zip
+
+vi .profile
+-------------------------------------------------------------
+export SONAR_HOME="/opt/sonarqube-5.6.7"
+export PATH=$SONAR_HOME/bin:$PATH
+
+:wq
+---------------------------------------------------------------
+source .profile
+
+
+2. sonar_scanner
+----------------
+a) download zip file for sonar_scanner or runner
+
+ wget https://sonarsource.bintray.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-3.1.0.1141-linux.zip
+
+ unzip sonar-scann.zip
+
+ #vi .profile
+ -------------------------
+
+ export SONAR_RUNNER_HOME="/opt/sonar-scanner-3.1.0.1141-linux"
+ export PATH=$SONAR_RUNNER_HOME/bin:$PATH
+ 
+ :wq
+-----------------------------------
+ source .profile
+
+
+b) integrate sonar with maven
+  --------------------------
+  #vi  /usr/share/maven/conf/settings.xml
+  ------------------------------------------------------------------
+  add this at 83 line below the 82 line
+
+   <pluginGroup>org.sonarsource.scanner.maven</pluginGroup>
+
+  add this at 248 line below the 247 and </profiles> should at the end 
+  and replace ip address with sonarqube server ip address.
+
+    <profile>
+           <id>sonar</id>
+           <activation>
+                <activeByDefault>true</activeByDefault>
+           </activation>
+           <properties>
+                <!-- optional url to server. Default value is http://localhost:9000 -->
+                <sonar.host.url>
+                   http://13.232.2.196:9000
+                </sonar.host.url>
+           </properties>
+    </profile>
+  :wq
+--------------------------------------------------------------------
+
+  #vi /opt/sonar-scanner-3.1.0.1141-linux/conf/sonar-scanner.properties
+
+   uncomment this line and give sonarqube server url 
+   sonar.host.url=http://13.232.2.196:9000
+
+   :wq 
+  ----------------------------------------------------------------
+
+c) Integrate Sonarqube with jenkins
+
+download the plugin SonarQube scanner for jenkins and restart
+  1) goto --> manage jenkins-->configure systems-->SonarQube Server
+
+	give the Sonarqube Server Ip address and provide Server Authentication Token
+
+	Server Authentication Token is will be in sonarqube server --> Administration-->security-->generate token
+
+	give some name and generate token and copy andd paste in configure systems
+
+2)  goto --> manage jenkins--> globaltool configuration--> sonarqube scanner
+
+	give the path for SONAR_RUNNER_HOME path and save it
+	
+Note: SonarQube server will be in any machine but SonarQube  Scanner should be in Jenkins server.
+
+while configuring job  select Build Actions--> Execute Sonar Scanner 
+
+Analysis propeties: 
+
+	sonar.projectKey=here will be anything but unique
+	sonar.projectName=Any name not only the project 
+	sonar.projectVersion=maintain a version no 
+	sonar.sources = /select/the/jenkins/workspace/jobname/and/src/folder
+
+eg:
+	sonar.projectKey=Javaproject
+	sonar.projectName=Newproject
+	sonar.projectVersion=0.01
+	sonar.sources = /root/.jenkins/workspace/$JOB_NAME/payslip/src
