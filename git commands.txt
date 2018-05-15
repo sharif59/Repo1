@@ -1,0 +1,15 @@
+git clone url
+
+copy files
+
+git checkout -b newbranch
+
+git branch 
+o/p new branch
+
+git add .
+git commit -m " new branch and some files"
+
+to push branch data into remote repo
+# git push --set-upstream origin sprint
+# git push --set-upstream origin integration
