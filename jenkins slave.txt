@@ -1,0 +1,8 @@
+master
+pem,pub
+
+slave
+username
+master pem,path
+
+non verification 

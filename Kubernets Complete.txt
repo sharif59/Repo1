@@ -1,0 +1,2637 @@
+Pods:
++++++
+A Kubernetes pod is a group of containers that are deployed together on the same host.
+
+Pods are created by using yaml file as mentioned below
+
+To get list of pods created on the cluster:
+
+[root@kubemaster Build]# kubectl get pods
+NAME          READY     STATUS    RESTARTS   AGE
+nginx-511zf   1/1       Running   0          10d
+nginx-69bzx   1/1       Running   1          10d
+[root@kubemaster Build]#
+
+Example1:
++++
+[root@kubemaster Build]# cat test.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.7.9
+    ports:
+    - containerPort: 80
+[root@kubemaster Build]#
++++
+
+Note: To disable errors
+[root@kubemaster Build]# kubectl create -f test.yaml
+error: error validating "test.yaml": error validating data: kind not set; if you choose to ignore these errors, turn validation off with --validate=false
+
+soultion:
+check the name of kind (all small characters)
+
+How to create pods on cluster:
+
+[root@kubemaster Build]# kubectl create -f test.yaml
+pod "nginx" created
+[root@kubemaster Build]#
+
+How to describe the pod details?
+
+[root@kubemaster Build]# kubectl describe pod nginx
+Name:           nginx
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Mon, 22 Jan 2018 20:09:44 +0530
+Labels:         <none>
+Status:         Running
+IP:             172.17.0.4
+Controllers:    <none>
+Containers:
+  nginx:
+    Container ID:               docker://68bd73e96d7f137f78d10801e217b369f17b94d284bd7c5393fd21c1e0062857
+    Image:                      nginx:1.7.9
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:e3456c851a152494c3e4ff5fcc26f240206abac0c9d794affb40e0714846c451
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Mon, 22 Jan 2018 20:09:47 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason                  Message
+  ---------     --------        -----   ----                    -------------           --------        ------                  -------
+  4m            4m              2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNS       kubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  4m            4m              1       {default-scheduler }                            Normal          Scheduled               Successfully assigned nginx to 192.168.56.55
+  4m            4m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled                  Container image "nginx:1.7.9" already present on machine
+  4m            4m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created                 Created container with docker id 68bd73e96d7f; Security:[seccomp=unconfined]
+  4m            4m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started                 Started container with docker id 68bd73e96d7f
+[root@kubemaster Build]#
+
+How to login to the container create by pod?
+
+[root@kubemaster Build]# kubectl exec -ti  label-nginx -- /bin/bash
+root@label-nginx:/# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+25: eth0@if26: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP
+    link/ether 02:42:ac:11:00:03 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.3/16 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:acff:fe11:3/64 scope link tentative dadfailed
+       valid_lft forever preferred_lft forever
+root@label-nginx:/#
+
+Opening a shell when a Pod has more than one Container?
+
+If a Pod has more than one Container, use --container or -c to specify a Container in the kubectl exec command. For example, suppose you have a Pod named my-pod, and the Pod has two containers named main-app and helper-app. The following command would open a shell to the main-app Container.
+
+kubectl exec -it my-pod --container main-app -- /bin/bash
+
+How to verify the interface details of the containers on minion node?
+
+[root@kubeminion ~]# brctl show
+bridge name     bridge id               STP enabled     interfaces
+docker0         8000.0242d49e5736       no              veth08d041f
+                                                        veth24ab357
+                                                        vethfccc90e
+[root@kubeminion ~]# ip a | grep veth*
+6: vethfccc90e@if5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP
+8: veth24ab357@if7: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP
+10: veth08d041f@if9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP
+[root@kubeminion ~]#
+
+How to delete the pod from the kubernetes cluster?
+
+[root@kubemaster Build]# kubectl get pods
+NAME          READY     STATUS    RESTARTS   AGE
+nginx         1/1       Running   0          13m
+nginx-h4g6h   1/1       Running   0          1m
+nginx-ql7nq   1/1       Running   0          1m
+[root@kubemaster Build]# kubectl delete pod nginx
+pod "nginx" deleted
+[root@kubemaster Build]# kubectl get pods
+NAME          READY     STATUS    RESTARTS   AGE
+nginx-h4g6h   1/1       Running   0          2m
+nginx-ql7nq   1/1       Running   0          2m
+[root@kubemaster Build]# 
+
+Sample examples to delete pods:
+
++++
+  # Delete a pod using the type and name specified in pod.json.
+  kubectl delete -f ./pod.json
+
+  # Delete a pod based on the type and name in the JSON passed into stdin.
+  cat pod.json | kubectl delete -f -
+
+  # Delete pods and services with same names "baz" and "foo"
+  kubectl delete pod,service baz foo
+
+  # Delete pods and services with label name=myLabel.
+  kubectl delete pods,services -l name=myLabel
+
+  # Delete a pod with minimal delay
+  kubectl delete pod foo --now
+
+  # Force delete a pod on a dead node
+  kubectl delete pod foo --grace-period=0 --force
+
+  # Delete a pod with UID 1234-56-7890-234234-456456.
+  kubectl delete pod 1234-56-7890-234234-456456
+
+  # Delete all pods
+  kubectl delete pods --all
++++
+
+How to use port forward for the running container?
+
++++
+[root@kubemaster Build]# kubectl get pods
+NAME          READY     STATUS    RESTARTS   AGE
+nginx         1/1       Running   0          15s
+nginx-h4g6h   1/1       Running   0          18m
+nginx-ql7nq   1/1       Running   0          18m
+[root@kubemaster Build]# kubectl port-forward nginx :80 &
+[1] 9480
+[root@kubemaster Build]# Forwarding from 127.0.0.1:45832 -> 80
+Forwarding from [::1]:45832 -> 80
+
+[root@kubemaster Build]# curl 127.0.0.1:45832
+Handling connection for 45832
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+[root@kubemaster Build]#
++++
+
+Examples:
+  # Listen on ports 5000 and 6000 locally, forwarding data to/from ports 5000 and 6000 in the pod
+  kubectl port-forward mypod 5000 6000
+
+  # Listen on port 8888 locally, forwarding to 5000 in the pod
+  kubectl port-forward mypod 8888:5000
+
+  # Listen on a random port locally, forwarding to 5000 in the pod
+  kubectl port-forward mypod :5000
+
+  # Listen on a random port locally, forwarding to 5000 in the pod
+  kubectl port-forward  mypod 0:5000
+
+Options:
+  -p, --pod='': Pod name
+
+Usage:
+  kubectl port-forward POD [LOCAL_PORT:]REMOTE_PORT [...[LOCAL_PORT_N:]REMOTE_PORT_N] [options]
+  
++++
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-app
+  labels:
+    app: example-app
+    version: v1
+    role: backend
+spec:
+  containers:
+  - name: java
+    image: companyname/java
+    ports:
+    - containerPort: 443
+    volumeMounts:
+    - mountPath: /volumes/logs
+      name: logs
+  - name: logger
+    image: companyname/logger:v1.2.3
+    ports:
+    - containerPort: 9999
+    volumeMounts:
+    - mountPath: /logs
+      name: logs
+  - name: monitoring
+    image: companyname/monitoring:v4.5.6
+    ports:
+    - containerPort: 1234
++++
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql-pod
+  labels:
+    name: mysql-pod
+    context: docker-k8s-lab
+spec:
+  containers: 
+    - 
+      name: mysql
+      image: mysql:latest
+      env: 
+        - 
+          name: "MYSQL_USER"
+          value: "mysql"
+        - 
+          name: "MYSQL_PASSWORD"
+          value: "mysql"
+        - 
+          name: "MYSQL_DATABASE"
+          value: "sample"
+        - 
+          name: "MYSQL_ROOT_PASSWORD"
+          value: "supersecret"
+      ports: 
+        - 
+          containerPort: 3306
++++
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: shell-demo
+spec:
+  volumes:
+  - name: shared-data
+    emptyDir: {}
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: shared-data
+      mountPath: /usr/share/nginx/html
+	  
+
+Examples:
+  # Return snapshot logs from pod nginx with only one container
+  kubectl logs nginx
+
+  # Return snapshot of previous terminated ruby container logs from pod web-1
+  kubectl logs -p -c ruby web-1
+
+  # Begin streaming the logs of the ruby container in pod web-1
+  kubectl logs -f -c ruby web-1
+
+  # Display only the most recent 20 lines of output in pod nginx
+  kubectl logs --tail=20 nginx
+
+  # Show all logs from pod nginx written in the last hour
+  kubectl logs --since=1h nginx
+
+
+LABEL:
+======
+
+
+[root@kubemaster Build]# cat nginx-label.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: label-nginx
+  labels:
+    app: nginx-server
+spec:
+  containers:
+  - name: lable-nginx
+    image: nginx:1.7.9
+    ports:
+    - containerPort: 80
+[root@kubemaster Build]#
+
+[root@kubemaster Build]# kubectl get pods -l app=nginx-server
+NAME          READY     STATUS    RESTARTS   AGE
+label-nginx   1/1       Running   0          1m
+[root@kubemaster Build]#
+
+How to get api version of the kubernetes cluster?
+
+[root@kubemaster Build]# kubectl api-versions
+apps/v1beta1
+authentication.k8s.io/v1beta1
+authorization.k8s.io/v1beta1
+autoscaling/v1
+batch/v1
+certificates.k8s.io/v1alpha1
+extensions/v1beta1
+policy/v1beta1
+rbac.authorization.k8s.io/v1alpha1
+storage.k8s.io/v1beta1
+v1
+[root@kubemaster Build]#
+
+Concepts
+Overview
+What is Kubernetes?
+Kubernetes Components
+The Kubernetes API
+Working with Kubernetes Objects
+Understanding Kubernetes Objects
+Names
+Namespaces
+Labels and Selectors
+Annotations
+Object Management Using kubectl
+Kubernetes Object Management
+Managing Kubernetes Objects Using Imperative Commands
+Imperative Management of Kubernetes Objects Using Configuration Files
+Declarative Management of Kubernetes Objects Using Configuration Files
+Kubernetes Architecture
+Nodes
+Master-Node communication
+Concepts Underlying the Cloud Controller Manager
+Extending Kubernetes
+Extending your Kubernetes Cluster
+Extending the Kubernetes API
+Extending the Kubernetes API with the aggregation layer
+Custom Resources
+Compute, Storage, and Networking Extensions
+Network Plugins
+Device Plugins
+Using Sysctls in a Kubernetes Cluster
+Service Catalog
+Containers
+Images
+Container Environment Variables
+Container Lifecycle Hooks
+Workloads
+Pods
+Pod Overview
+Pods
+Pod Lifecycle
+Init Containers
+Pod Preset
+Disruptions
+Controllers
+ReplicaSet
+ReplicationController
+Deployments
+StatefulSets
+DaemonSet
+Garbage Collection
+Jobs - Run to Completion
+CronJob
+Configuration
+Configuration Best Practices
+Managing Compute Resources for Containers
+Assigning Pods to Nodes
+Taints and Tolerations
+Secrets
+Organizing Cluster Access Using kubeconfig Files
+Pod Priority and Preemption
+Services, Load Balancing, and Networking
+Services
+DNS for Services and Pods
+Connecting Applications with Services
+Ingress
+Network Policies
+Adding entries to Pod /etc/hosts with HostAliases
+Storage
+Volumes
+Persistent Volumes
+Storage Classes
+Dynamic Volume Provisioning
+Cluster Administration
+Cluster Administration Overview
+Certificates
+Cloud Providers
+Managing Resources
+Cluster Networking
+Network Plugins
+Logging Architecture
+Configuring kubelet Garbage Collection
+Federation
+Using Sysctls in a Kubernetes Cluster
+Proxies in Kubernetes
+Controller manager metrics
+Device Plugins
+Policies
+Resource Quotas
+Pod Security Policies
+Edit This Page
+
+
+
+Running stateless application using a deployment:
+=================================================
+A Deployment controller provides declarative updates for Pods and ReplicaSets.
+
+You describe a desired state in a Deployment object, and the Deployment controller changes the actual state to the desired state at a controlled rate. You can define Deployments to create new ReplicaSets, or to remove existing Deployments and adopt all their resources with new Deployments.
+
+How to verify the kubernetes version installed?
+
+[root@kubemaster deployment]# kubectl version
+Client Version: version.Info{Major:"1", Minor:"5", GitVersion:"v1.5.2", GitCommit:"269f928217957e7126dc87e6adfa82242bfe5b1e", GitTreeState:"clean", BuildDate:"2017-07-03T15:31:10Z", GoVersion:"go1.7.4", Compiler:"gc", Platform:"linux/amd64"}
+Server Version: version.Info{Major:"1", Minor:"5", GitVersion:"v1.5.2", GitCommit:"269f928217957e7126dc87e6adfa82242bfe5b1e", GitTreeState:"clean", BuildDate:"2017-07-03T15:31:10Z", GoVersion:"go1.7.4", Compiler:"gc", Platform:"linux/amd64"}
+
+
+[root@kubemaster deployment]# cat deployment_nginx.yaml
+apiVersion: extensions/v1beta1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template: # create pods using pod definition in this template
+    metadata:
+      # unlike pod-nginx.yaml, the name is not included in the meta data as a unique name is
+      # generated from the deployment name
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+
+[root@kubemaster deployment]# kubectl create -f deployment_nginx.yaml
+deployment "nginx-deployment" created
+[root@kubemaster deployment]#
+
+Let us verify the complete info of the deployment?
+
+[root@kubemaster deployment]# kubectl describe deployment nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Wed, 07 Mar 2018 17:01:45 +0530
+Labels:                 app=nginx
+Selector:               app=nginx
+Replicas:               2 updated | 2 total | 2 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  1 max unavailable, 1 max surge
+Conditions:
+  Type          Status  Reason
+  ----          ------  ------
+  Available     True    MinimumReplicasAvailable
+OldReplicaSets: <none>
+NewReplicaSet:  nginx-deployment-4087004473 (2/2 replicas created)
+Events:
+  FirstSeen     LastSeen        Count   From                            SubObjectPath   Type            Reason                  Message
+  ---------     --------        -----   ----                            -------------   --------        ------                  -------
+  1m            1m              1       {deployment-controller }               Normal           ScalingReplicaSet       Scaled up replica set nginx-deployment-4087004473 to 2
+[root@kubemaster deployment]#
+		
+[root@kubemaster deployment]# kubectl get pods
+NAME                                READY     STATUS    RESTARTS   AGE
+nginx-deployment-4087004473-k79hz   1/1       Running   0          2m
+nginx-deployment-4087004473-t4pdb   1/1       Running   0          2m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           2m
+[root@kubemaster deployment]#
+
+There are multiple may to upgrade the deployemt from one version to another...
+
+# kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+deployment "nginx-deployment" image updated
+
+# kubectl edit deployment/nginx-deployment
+deployment "nginx-deployment" edited
+
+or open the yaml file and update the parameters and execute the following command.
+
+# kubectl apply -f deployment_nginx.yaml
+
+Deployments
+A Deployment controller provides declarative updates for Pods and ReplicaSets.
+
+You describe a desired state in a Deployment object, and the Deployment controller changes the actual state to the desired state at a controlled rate. You can define Deployments to create new ReplicaSets, or to remove existing Deployments and adopt all their resources with new Deployments.
+
+Note: You should not manage ReplicaSets owned by a Deployment. All the use cases should be covered by manipulating the Deployment object. Consider opening an issue in the main Kubernetes repository if your use case is not covered below.
+
+The following are typical use cases for Deployments:
+
+Create a Deployment to rollout a ReplicaSet. The ReplicaSet creates Pods in the background. Check the status of the rollout to see if it succeeds or not.
+Declare the new state of the Pods by updating the PodTemplateSpec of the Deployment. A new ReplicaSet is created and the Deployment manages moving the Pods from the old ReplicaSet to the new one at a controlled rate. Each new ReplicaSet updates the revision of the Deployment.
+Rollback to an earlier Deployment revision if the current state of the Deployment is not stable. Each rollback updates the revision of the Deployment.
+Scale up the Deployment to facilitate more load.
+Pause the Deployment to apply multiple fixes to its PodTemplateSpec and then resume it to start a new rollout.
+Use the status of the Deployment as an indicator that a rollout has stuck.
+Clean up older ReplicaSets that you don’t need anymore.
+Creating a Deployment
+The following is an example of a Deployment. It creates a ReplicaSet to bring up three nginx Pods:
+
+nginx-deployment.yaml  Copy nginx-deployment.yaml to clipboard
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+In this example:
+
+A Deployment named nginx-deployment is created, indicated by the metadata: name field.
+The Deployment creates three replicated Pods, indicated by the replicas field.
+The selector field defines how the Deployment finds which Pods to manage. In this case, we simply select on one label defined in the Pod template (app: nginx). However, more sophisticated selection rules are possible, as long as the Pod template itself satisfies the rule.
+The Pod template’s specification, or template: spec field, indicates that the Pods run one container, nginx, which runs the nginx Docker Hub image at version 1.7.9.
+The Deployment opens port 80 for use by the Pods.
+Note: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+The template field contains the following instructions:
+
+The Pods are labeled app: nginx
+Create one container and name it nginx.
+Run the nginx image at version 1.7.9.
+Open port 80 so that the container can send and accept traffic.
+To create this Deployment, run the following command:
+
+kubectl create -f https://raw.githubusercontent.com/kubernetes/website/master/docs/concepts/workloads/controllers/nginx-deployment.yaml
+Note: You can append --record to this command to record the current command in the annotations of the created or updated resource. This is useful for future review, such as investigating which commands were executed in each Deployment revision.
+
+Next, run kubectl get deployments. The output is similar to the following:
+
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3         0         0            0           1s
+When you inspect the Deployments in your cluster, the following fields are displayed:
+
+NAME lists the names of the Deployments in the cluster.
+DESIRED displays the desired number of replicas of the application, which you define when you create the Deployment. This is the desired state.
+CURRENT displays how many replicas are currently running.
+UP-TO-DATE displays the number of replicas that have been updated to achieve the desired state.
+AVAILABLE displays how many replicas of the application are available to your users.
+AGE displays the amount of time that the application has been running.
+Notice how the values in each field correspond to the values in the Deployment specification:
+
+The number of desired replicas is 3 according to spec: replicas field.
+The number of current replicas is 0 according to the .status.replicas field.
+The number of up-to-date replicas is 0 according to the .status.updatedReplicas field.
+The number of available replicas is 0 according to the .status.availableReplicas field.
+To see the Deployment rollout status, run kubectl rollout status deployment/nginx-deployment. This command returns the following output:
+
+Waiting for rollout to finish: 2 out of 3 new replicas have been updated...
+deployment "nginx-deployment" successfully rolled out
+Run the kubectl get deployments again a few seconds later:
+
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3         3         3            3           18s
+Notice that the Deployment has created all three replicas, and all replicas are up-to-date (they contain the latest Pod template) and available (the Pod status is Ready for at least the value of the Deployment’s .spec.minReadySeconds field).
+
+To see the ReplicaSet (rs) created by the deployment, run kubectl get rs:
+
+NAME                          DESIRED   CURRENT   READY   AGE
+nginx-deployment-2035384211   3         3         3       18s
+Notice that the name of the ReplicaSet is always formatted as [DEPLOYMENT-NAME]-[POD-TEMPLATE-HASH-VALUE]. The hash value is automatically generated when the Deployment is created.
+
+To see the labels automatically generated for each pod, run kubectl get pods --show-labels. The following output is returned:
+
+NAME                                READY     STATUS    RESTARTS   AGE       LABELS
+nginx-deployment-2035384211-7ci7o   1/1       Running   0          18s       app=nginx,pod-template-hash=2035384211
+nginx-deployment-2035384211-kzszj   1/1       Running   0          18s       app=nginx,pod-template-hash=2035384211
+nginx-deployment-2035384211-qqcnn   1/1       Running   0          18s       app=nginx,pod-template-hash=2035384211
+The created ReplicaSet ensures that there are three nginx Pods running at all times.
+
+Note: You must specify an appropriate selector and Pod template labels in a Deployment (in this case, app: nginx). Do not overlap labels or selectors with other controllers (including other Deployments and StatefulSets). Kubernetes doesn’t stop you from overlapping, and if multiple controllers have overlapping selectors those controllers might conflict and behave unexpectedly.
+
+Pod-template-hash label
+Note: Do not change this label.
+
+The pod-template-hash label is added by the Deployment controller to every ReplicaSet that a Deployment creates or adopts.
+
+This label ensures that child ReplicaSets of a Deployment do not overlap. It is generated by hashing the PodTemplate of the ReplicaSet and using the resulting hash as the label value that is added to the ReplicaSet selector, Pod template labels, and in any existing Pods that the ReplicaSet might have.
+
+Updating a Deployment
+Note: A Deployment’s rollout is triggered if and only if the Deployment’s pod template (that is, .spec.template) is changed, for example if the labels or container images of the template are updated. Other updates, such as scaling the Deployment, do not trigger a rollout.
+
+Suppose that we now want to update the nginx Pods to use the nginx:1.9.1 image instead of the nginx:1.7.9 image.
+
+$ kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+deployment "nginx-deployment" image updated
+Alternatively, we can edit the Deployment and change .spec.template.spec.containers[0].image from nginx:1.7.9 to nginx:1.9.1:
+
+$ kubectl edit deployment/nginx-deployment
+deployment "nginx-deployment" edited
+To see the rollout status, run:
+
+$ kubectl rollout status deployment/nginx-deployment
+Waiting for rollout to finish: 2 out of 3 new replicas have been updated...
+deployment "nginx-deployment" successfully rolled out
+After the rollout succeeds, you may want to get the Deployment:
+
+$ kubectl get deployments
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3         3         3            3           36s
+The number of up-to-date replicas indicates that the Deployment has updated the replicas to the latest configuration. The current replicas indicates the total replicas this Deployment manages, and the available replicas indicates the number of current replicas that are available.
+
+We can run kubectl get rs to see that the Deployment updated the Pods by creating a new ReplicaSet and scaling it up to 3 replicas, as well as scaling down the old ReplicaSet to 0 replicas.
+
+$ kubectl get rs
+NAME                          DESIRED   CURRENT   READY   AGE
+nginx-deployment-1564180365   3         3         3       6s
+nginx-deployment-2035384211   0         0         0       36s
+Running get pods should now show only the new Pods:
+
+$ kubectl get pods
+NAME                                READY     STATUS    RESTARTS   AGE
+nginx-deployment-1564180365-khku8   1/1       Running   0          14s
+nginx-deployment-1564180365-nacti   1/1       Running   0          14s
+nginx-deployment-1564180365-z9gth   1/1       Running   0          14s
+Next time we want to update these Pods, we only need to update the Deployment’s pod template again.
+
+Deployment can ensure that only a certain number of Pods may be down while they are being updated. By default, it ensures that at least 25% less than the desired number of Pods are up (25% max unavailable).
+
+Deployment can also ensure that only a certain number of Pods may be created above the desired number of Pods. By default, it ensures that at most 25% more than the desired number of Pods are up (25% max surge).
+
+For example, if you look at the above Deployment closely, you will see that it first created a new Pod, then deleted some old Pods and created new ones. It does not kill old Pods until a sufficient number of new Pods have come up, and does not create new Pods until a sufficient number of old Pods have been killed. It makes sure that number of available Pods is at least 2 and the number of total Pods is at most 4.
+
+$ kubectl describe deployments
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Thu, 30 Nov 2017 10:56:25 +0000
+Labels:                 app=nginx
+Annotations:            deployment.kubernetes.io/revision=2
+Selector:               app=nginx
+Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx:1.9.1
+    Port:         80/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   nginx-deployment-1564180365 (3/3 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  2m    deployment-controller  Scaled up replica set nginx-deployment-2035384211 to 3
+  Normal  ScalingReplicaSet  24s   deployment-controller  Scaled up replica set nginx-deployment-1564180365 to 1
+  Normal  ScalingReplicaSet  22s   deployment-controller  Scaled down replica set nginx-deployment-2035384211 to 2
+  Normal  ScalingReplicaSet  22s   deployment-controller  Scaled up replica set nginx-deployment-1564180365 to 2
+  Normal  ScalingReplicaSet  19s   deployment-controller  Scaled down replica set nginx-deployment-2035384211 to 1
+  Normal  ScalingReplicaSet  19s   deployment-controller  Scaled up replica set nginx-deployment-1564180365 to 3
+  Normal  ScalingReplicaSet  14s   deployment-controller  Scaled down replica set nginx-deployment-2035384211 to 0
+Here we see that when we first created the Deployment, it created a ReplicaSet (nginx-deployment-2035384211) and scaled it up to 3 replicas directly. When we updated the Deployment, it created a new ReplicaSet (nginx-deployment-1564180365) and scaled it up to 1 and then scaled down the old ReplicaSet to 2, so that at least 2 Pods were available and at most 4 Pods were created at all times. It then continued scaling up and down the new and the old ReplicaSet, with the same rolling update strategy. Finally, we’ll have 3 available replicas in the new ReplicaSet, and the old ReplicaSet is scaled down to 0.
+
+Rollover (aka multiple updates in-flight)
+Each time a new deployment object is observed by the Deployment controller, a ReplicaSet is created to bring up the desired Pods if there is no existing ReplicaSet doing so. Existing ReplicaSet controlling Pods whose labels match .spec.selector but whose template does not match .spec.template are scaled down. Eventually, the new ReplicaSet will be scaled to .spec.replicas and all old ReplicaSets will be scaled to 0.
+
+If you update a Deployment while an existing rollout is in progress, the Deployment will create a new ReplicaSet as per the update and start scaling that up, and will roll over the ReplicaSet that it was scaling up previously – it will add it to its list of old ReplicaSets and will start scaling it down.
+
+For example, suppose you create a Deployment to create 5 replicas of nginx:1.7.9, but then updates the Deployment to create 5 replicas of nginx:1.9.1, when only 3 replicas of nginx:1.7.9 had been created. In that case, Deployment will immediately start killing the 3 nginx:1.7.9 Pods that it had created, and will start creating nginx:1.9.1 Pods. It will not wait for 5 replicas of nginx:1.7.9 to be created before changing course.
+
+Label selector updates
+It is generally discouraged to make label selector updates and it is suggested to plan your selectors up front. In any case, if you need to perform a label selector update, exercise great caution and make sure you have grasped all of the implications.
+
+Note: In API version apps/v1, a Deployment’s label selector is immutable after it gets created.
+
+Selector additions require the pod template labels in the Deployment spec to be updated with the new label too, otherwise a validation error is returned. This change is a non-overlapping one, meaning that the new selector does not select ReplicaSets and Pods created with the old selector, resulting in orphaning all old ReplicaSets and creating a new ReplicaSet.
+Selector updates – that is, changing the existing value in a selector key – result in the same behavior as additions.
+Selector removals – that is, removing an existing key from the Deployment selector – do not require any changes in the pod template labels. No existing ReplicaSet is orphaned, and a new ReplicaSet is not created, but note that the removed label still exists in any existing Pods and ReplicaSets.
+Rolling Back a Deployment
+Sometimes you may want to rollback a Deployment; for example, when the Deployment is not stable, such as crash looping. By default, all of the Deployment’s rollout history is kept in the system so that you can rollback anytime you want (you can change that by modifying revision history limit).
+
+Note: A Deployment’s revision is created when a Deployment’s rollout is triggered. This means that the new revision is created if and only if the Deployment’s pod template (.spec.template) is changed, for example if you update the labels or container images of the template. Other updates, such as scaling the Deployment, do not create a Deployment revision, so that we can facilitate simultaneous manual- or auto-scaling. This means that when you roll back to an earlier revision, only the Deployment’s pod template part is rolled back.
+
+Suppose that we made a typo while updating the Deployment, by putting the image name as nginx:1.91 instead of nginx:1.9.1:
+
+$ kubectl set image deployment/nginx-deployment nginx=nginx:1.91
+deployment "nginx-deployment" image updated
+The rollout will be stuck.
+
+$ kubectl rollout status deployments nginx-deployment
+Waiting for rollout to finish: 2 out of 3 new replicas have been updated...
+Press Ctrl-C to stop the above rollout status watch. For more information on stuck rollouts, read more here.
+
+You will also see that both the number of old replicas (nginx-deployment-1564180365 and nginx-deployment-2035384211) and new replicas (nginx-deployment-3066724191) are 2.
+
+$ kubectl get rs
+NAME                          DESIRED   CURRENT   READY   AGE
+nginx-deployment-1564180365   2         2         0       25s
+nginx-deployment-2035384211   0         0         0       36s
+nginx-deployment-3066724191   2         2         2       6s
+Looking at the Pods created, you will see that the 2 Pods created by new ReplicaSet are stuck in an image pull loop.
+
+$ kubectl get pods
+NAME                                READY     STATUS             RESTARTS   AGE
+nginx-deployment-1564180365-70iae   1/1       Running            0          25s
+nginx-deployment-1564180365-jbqqo   1/1       Running            0          25s
+nginx-deployment-3066724191-08mng   0/1       ImagePullBackOff   0          6s
+nginx-deployment-3066724191-eocby   0/1       ImagePullBackOff   0          6s
+Note: The Deployment controller will stop the bad rollout automatically, and will stop scaling up the new ReplicaSet. This depends on the rollingUpdate parameters (maxUnavailable specifically) that you have specified. Kubernetes by default sets the value to 1 and spec.replicas to 1 so if you haven’t cared about setting those parameters, your Deployment can have 100% unavailability by default! This will be fixed in Kubernetes in a future version.
+
+$ kubectl describe deployment
+Name:           nginx-deployment
+Namespace:      default
+CreationTimestamp:  Tue, 15 Mar 2016 14:48:04 -0700
+Labels:         app=nginx
+Selector:       app=nginx
+Replicas:       2 updated | 3 total | 2 available | 2 unavailable
+StrategyType:       RollingUpdate
+MinReadySeconds:    0
+RollingUpdateStrategy:  1 max unavailable, 1 max surge
+OldReplicaSets:     nginx-deployment-1564180365 (2/2 replicas created)
+NewReplicaSet:      nginx-deployment-3066724191 (2/2 replicas created)
+Events:
+  FirstSeen LastSeen    Count   From                    SubobjectPath   Type        Reason              Message
+  --------- --------    -----   ----                    -------------   --------    ------              -------
+  1m        1m          1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled up replica set nginx-deployment-2035384211 to 3
+  22s       22s         1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled up replica set nginx-deployment-1564180365 to 1
+  22s       22s         1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled down replica set nginx-deployment-2035384211 to 2
+  22s       22s         1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled up replica set nginx-deployment-1564180365 to 2
+  21s       21s         1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled down replica set nginx-deployment-2035384211 to 0
+  21s       21s         1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled up replica set nginx-deployment-1564180365 to 3
+  13s       13s         1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled up replica set nginx-deployment-3066724191 to 1
+  13s       13s         1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled down replica set nginx-deployment-1564180365 to 2
+  13s       13s         1       {deployment-controller }                Normal      ScalingReplicaSet   Scaled up replica set nginx-deployment-3066724191 to 2
+To fix this, we need to rollback to a previous revision of Deployment that is stable.
+
+Checking Rollout History of a Deployment
+First, check the revisions of this deployment:
+
+$ kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+REVISION    CHANGE-CAUSE
+1           kubectl create -f docs/user-guide/nginx-deployment.yaml --record
+2           kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+3           kubectl set image deployment/nginx-deployment nginx=nginx:1.91
+Because we recorded the command while creating this Deployment using --record, we can easily see the changes we made in each revision.
+
+To further see the details of each revision, run:
+
+$ kubectl rollout history deployment/nginx-deployment --revision=2
+deployments "nginx-deployment" revision 2
+  Labels:       app=nginx
+          pod-template-hash=1159050644
+  Annotations:  kubernetes.io/change-cause=kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+  Containers:
+   nginx:
+    Image:      nginx:1.9.1
+    Port:       80/TCP
+     QoS Tier:
+        cpu:      BestEffort
+        memory:   BestEffort
+    Environment Variables:      <none>
+  No volumes.
+
+How to apply updates to the deployemt?
+
+# kubectl set image <deployemt_name> nginx=nginx:1.8
+ 
+Rolling Back to a Previous Revision
+
+# kubectl rollout undo deployment/nginx-deployment
+deployment "nginx-deployment" rolled back
+
+How to verify the hostory of rollouts in the deployment?
+
+#kubectl rollout history deployment/nginx-deployment-prod --revision=<number>
+
+# kubectl rollout undo deployment/nginx-deployment --to-revision=2
+deployment "nginx-deployment" rolled back
+
+Scaling a Deployment
+
+# kubectl scale deployment nginx-deployment --replicas=10
+deployment "nginx-deployment" scaled
+
+# kubectl autoscale deployment nginx-deployment --min=10 --max=15 --cpu-percent=80
+deployment "nginx-deployment" autoscaled
+
+Pausing and Resuming a Deployment
+
+# kubectl rollout pause deployment/nginx-deployment
+deployment "nginx-deployment" paused
+
+# kubectl rollout resume deployment/nginx-deployment
+deployment "nginx" resumed
+
+[root@kubemaster Build]# cat deployment-state.yaml
+apiVersion: extensions/v1beta1  or apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment-prod
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx-deployment-prod
+    spec:
+      containers:
+      - name: nginx-deployment-prod
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+[root@kubemaster Build]#
+
+Reference: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#exec
+
+
++++
+[root@kubemaster Build]# kubectl cluster-info
+Kubernetes master is running at http://localhost:8080
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+[root@kubemaster Build]# kubectl cluster-info dump
+{
+    "metadata": {
+        "selfLink": "/api/v1/nodes",
+        "resourceVersion": "17876"
+    },
+..
+..
+==== START logs for default/label-nginx ====
+==== END logs for default/label-nginx ====
+==== START logs for default/nginx-nlzpd ====
+==== END logs for default/nginx-nlzpd ====
+==== START logs for default/nginx-rw6zc ====
+==== END logs for default/nginx-rw6zc ====
+Cluster info dumped to .
+[root@kubemaster Build]#
++++
+ReplicationController:
+======================
+
+[root@kubemaster Build]# kubectl create -f replication-controller.yaml
+replicationcontroller "nginx-www" created
+[root@kubemaster Build]# cat replication-controller.yaml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: nginx-www
+spec:
+  replicas: 3
+  selector:
+    app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+[root@kubemaster Build]#
+
+Practices:
+==========
+
+[root@kubemaster deployment]# kubectl delete -f deployment_nginx.yaml
+deployment "nginx-deployment" deleted
+[root@kubemaster deployment]# kubectl get deployment
+No resources found.
+[root@kubemaster deployment]# kubectl get pods
+No resources found.
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl create -f deployment_nginx.yaml --record
+deployment "nginx-deployment" created
+[root@kubemaster deployment]# kubectl get pods
+NAME                                READY     STATUS              RESTARTS   AGE
+nginx-deployment-4087004473-mtcxq   0/1       ContainerCreating   0          4s
+nginx-deployment-4087004473-qkrg1   0/1       ContainerCreating   0          4s
+nginx-deployment-4087004473-v97h6   0/1       ContainerCreating   0          4s
+nginx-deployment-4087004473-zk8bt   0/1       ContainerCreating   0          4s
+[root@kubemaster deployment]# kubectl get pods
+NAME                                READY     STATUS    RESTARTS   AGE
+nginx-deployment-4087004473-mtcxq   1/1       Running   0          8s
+nginx-deployment-4087004473-qkrg1   1/1       Running   0          8s
+nginx-deployment-4087004473-v97h6   1/1       Running   0          8s
+nginx-deployment-4087004473-zk8bt   1/1       Running   0          8s
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         4         4            4           12s
+[root@kubemaster deployment]# vi deployment_nginx.yaml
+[root@kubemaster deployment]# kubectl apply -f deployment_nginx.yaml
+deployment "nginx-deployment" configured
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         5         2            3           54s
+[root@kubemaster deployment]# kubectl get pods
+NAME                                READY     STATUS              RESTARTS   AGE
+nginx-deployment-2273492681-qm70b   1/1       Running             0          7s
+nginx-deployment-2273492681-vhwg8   0/1       ContainerCreating   0          7s
+nginx-deployment-2273492681-vxhq9   1/1       Running             0          3s
+nginx-deployment-2273492681-wx1xx   0/1       ContainerCreating   0          1s
+nginx-deployment-4087004473-v97h6   1/1       Running             0          58s
+nginx-deployment-4087004473-zk8bt   1/1       Terminating         0          58s
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         5         4            3           1m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         5         4            3           1m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         5         4            3           1m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         5         4            3           1m
+[root@kubemaster deployment]# kubectl describe deployment nginx-deployment
+[root@kubemaster deployment]# kubectl describe deployment nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Wed, 07 Mar 2018 18:40:23 +0530
+Labels:                 app=nginx
+Selector:               app=nginx
+Replicas:               4 updated | 4 total | 4 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  1 max unavailable, 1 max surge
+Conditions:
+  Type          Status  Reason
+  ----          ------  ------
+  Available     True    MinimumReplicasAvailable
+OldReplicaSets: <none>
+NewReplicaSet:  nginx-deployment-2273492681 (4/4 replicas created)
+Events:
+  FirstSeen     LastSeen        Count   From                            SubObjectPath   Type            Reason           Message
+  ---------     --------        -----   ----                            -------------   --------        ------           -------
+  1m            1m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-4087004473 to 4
+  56s           56s             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 1
+  56s           56s             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 3
+  56s           56s             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 2
+  52s           52s             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 2
+  52s           52s             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 3
+  50s           50s             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 1
+  50s           50s             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 4
+  11s           11s             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 0
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl describe pod nginx-deployment
+Name:           nginx-deployment-2273492681-qm70b
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:41:14 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.2
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://3686b474077ca30917b6dd723369760efc749a32d20f933d2fb336b3edf9d966
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:17 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  1m            1m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-qm70b to 192.168.56.55
+  1m            1m              2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Container image "nginx:latest" already present on machine
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 3686b474077c; Security:[seccomp=unconfined]
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 3686b474077c
+
+Name:           nginx-deployment-2273492681-vhwg8
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:41:14 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.4
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://9ef1103cc6e9a972cb5dd6e067bea140acf655e813d8860b68aa78b2d57fea15
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:59 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  1m            1m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-vhwg8 to 192.168.56.56
+  1m            1m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:latest"
+  1m            47s             2       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  47s           47s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulled           Successfully pulled image "nginx:latest"
+  46s           46s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Created          Created container with docker id 9ef1103cc6e9; Security:[seccomp=unconfined]
+  46s           46s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Started          Started container with docker id 9ef1103cc6e9
+
+Name:           nginx-deployment-2273492681-vxhq9
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:41:17 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.3
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://1e24dc75ea478860037488dd302e46568eee064d1c1d0d44d4a5e6d574854e2a
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:19 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  1m            1m              2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  1m            1m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-vxhq9 to 192.168.56.55
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Container image "nginx:latest" already present on machine
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 1e24dc75ea47; Security:[seccomp=unconfined]
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 1e24dc75ea47
+
+Name:           nginx-deployment-2273492681-wx1xx
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:41:19 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.2
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://ad262589a956951267354f21920f9e27007d6d459816c24043131a25ce01b94c
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:42:06 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  1m            1m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-wx1xx to 192.168.56.56
+  1m            1m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:latest"
+  1m            40s             2       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  40s           40s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulled           Successfully pulled image "nginx:latest"
+  39s           39s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Created          Created container with docker id ad262589a956; Security:[seccomp=unconfined]
+  39s           39s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Started          Started container with docker id ad262589a956
+
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get pod
+NAME                                READY     STATUS    RESTARTS   AGE
+nginx-deployment-2273492681-qm70b   1/1       Running   0          2m
+nginx-deployment-2273492681-vhwg8   1/1       Running   0          2m
+nginx-deployment-2273492681-vxhq9   1/1       Running   0          2m
+nginx-deployment-2273492681-wx1xx   1/1       Running   0          2m
+[root@kubemaster deployment]# kubectl describe deployment nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Wed, 07 Mar 2018 18:40:23 +0530
+Labels:                 app=nginx
+Selector:               app=nginx
+Replicas:               4 updated | 4 total | 4 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  1 max unavailable, 1 max surge
+Conditions:
+  Type          Status  Reason
+  ----          ------  ------
+  Available     True    MinimumReplicasAvailable
+OldReplicaSets: <none>
+NewReplicaSet:  nginx-deployment-2273492681 (4/4 replicas created)
+Events:
+  FirstSeen     LastSeen        Count   From                            SubObjectPath   Type            Reason           Message
+  ---------     --------        -----   ----                            -------------   --------        ------           -------
+  3m            3m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-4087004473 to 4
+  2m            2m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 1
+  2m            2m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 3
+  2m            2m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 2
+  2m            2m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 2
+  2m            2m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 3
+  2m            2m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 1
+  2m            2m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 4
+  2m            2m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 0
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         4         4            4           3m
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get rs
+NAME                          DESIRED   CURRENT   READY     AGE
+nginx-deployment-2273492681   4         4         4         5m
+nginx-deployment-4087004473   0         0         0         6m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         4         4            4           6m
+[root@kubemaster deployment]# kubectl get pod
+NAME                                READY     STATUS    RESTARTS   AGE
+nginx-deployment-2273492681-qm70b   1/1       Running   0          5m
+nginx-deployment-2273492681-vhwg8   1/1       Running   0          5m
+nginx-deployment-2273492681-vxhq9   1/1       Running   0          5m
+nginx-deployment-2273492681-wx1xx   1/1       Running   0          5m
+[root@kubemaster deployment]# kubectl get pod --show-lables
+Error: unknown flag: --show-lables
+
+
+Examples:
+  # List all pods in ps output format.
+  kubectl get pods
+
+  # List all pods in ps output format with more information (such as node name).
+  kubectl get pods -o wide
+
+  # List a single replication controller with specified NAME in ps output format.
+  kubectl get replicationcontroller web
+
+  # List a single pod in JSON output format.
+  kubectl get -o json pod web-pod-13je7
+
+  # List a pod identified by type and name specified in "pod.yaml" in JSON output format.
+  kubectl get -f pod.yaml -o json
+
+  # Return only the phase value of the specified pod.
+  kubectl get -o template pod/web-pod-13je7 --template={{.status.phase}}
+
+  # List all replication controllers and services together in ps output format.
+  kubectl get rc,services
+
+  # List one or more resources by their type and names.
+  kubectl get rc/web service/frontend pods/web-pod-13je7
+
+Options:
+      --all-namespaces=false: If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.
+      --allow-missing-template-keys=true: If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.
+      --export=false: If true, use 'export' for the resources.  Exported resources are stripped of cluster-specific information.
+  -f, --filename=[]: Filename, directory, or URL to files identifying the resource to get from a server.
+      --include-extended-apis=true: If true, include definitions of new APIs via calls to the API server. [default true]
+  -L, --label-columns=[]: Accepts a comma separated list of labels that are going to be presented as columns. Names are case-sensitive. You can also use multiple flag options like -L label1 -L label2...
+      --no-headers=false: When using the default or custom-column output format, don't print headers.
+  -o, --output='': Output format. One of: json|yaml|wide|name|custom-columns=...|custom-columns-file=...|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=... See custom columns [http://kubernetes.io/docs/user-guide/kubectl-overview/#custom-columns], golang template [http://golang.org/pkg/text/template/#pkg-overview] and jsonpath template [http://kubernetes.io/docs/user-guide/jsonpath].
+      --output-version='': Output the formatted object with the given group version (for ex: 'extensions/v1beta1').
+      --raw='': Raw URI to request from the server.  Uses the transport specified by the kubeconfig file.
+  -R, --recursive=false: Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+  -l, --selector='': Selector (label query) to filter on
+  -a, --show-all=false: When printing, show all resources (default hide terminated pods.)
+      --show-kind=false: If present, list the resource type for the requested object(s).
+      --show-labels=false: When printing, show all labels as the last column (default hide labels column)
+      --sort-by='': If non-empty, sort list types using this field specification.  The field specification is expressed as a JSONPath expression (e.g. '{.metadata.name}'). The field in the API resource specified by this JSONPath expression must be an integer or a string.
+      --template='': Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
+  -w, --watch=false: After listing/getting the requested object, watch for changes.
+      --watch-only=false: Watch for changes to the requested object(s), without listing/getting first.
+
+Usage:
+  kubectl get [(-o|--output=)json|yaml|wide|custom-columns=...|custom-columns-file=...|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=...] (TYPE [NAME | -l label] | TYPE/NAME ...) [flags] [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+
+Error: unknown flag: --show-lables
+unknown flag: --show-lables[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get pod --show-labels
+NAME                                READY     STATUS    RESTARTS   AGE       LABELS
+nginx-deployment-2273492681-qm70b   1/1       Running   0          7m        app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vhwg8   1/1       Running   0          7m        app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vxhq9   1/1       Running   0          7m        app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-wx1xx   1/1       Running   0          7m        app=nginx,pod-template-hash=2273492681
+[root@kubemaster deployment]# cat deployment_nginx.yaml
+apiVersion: extensions/v1beta1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 4 # tells deployment to run 2 pods matching the template
+  template: # create pods using pod definition in this template
+    metadata:
+      # unlike pod-nginx.yaml, the name is not included in the meta data as a unique name is
+      # generated from the deployment name
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+[root@kubemaster deployment]# kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+deployment "nginx-deployment" image updated
+[root@kubemaster deployment]# cat deployment_nginx.yaml
+apiVersion: extensions/v1beta1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 4 # tells deployment to run 2 pods matching the template
+  template: # create pods using pod definition in this template
+    metadata:
+      # unlike pod-nginx.yaml, the name is not included in the meta data as a unique name is
+      # generated from the deployment name
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get pod --show-labels
+NAME                                READY     STATUS              RESTARTS   AGE       LABELS
+nginx-deployment-2273492681-qm70b   1/1       Running             0          9m        app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vhwg8   1/1       Running             0          9m        app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vxhq9   1/1       Running             0          9m        app=nginx,pod-template-hash=2273492681
+nginx-deployment-3599678771-cg60n   0/1       ContainerCreating   0          5s        app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-nz37z   0/1       ContainerCreating   0          5s        app=nginx,pod-template-hash=3599678771
+[root@kubemaster deployment]# kubectl describe deployment nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Wed, 07 Mar 2018 18:40:23 +0530
+Labels:                 app=nginx
+Selector:               app=nginx
+Replicas:               2 updated | 4 total | 3 available | 2 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  1 max unavailable, 1 max surge
+Conditions:
+  Type          Status  Reason
+  ----          ------  ------
+  Available     True    MinimumReplicasAvailable
+OldReplicaSets: nginx-deployment-2273492681 (3/3 replicas created)
+NewReplicaSet:  nginx-deployment-3599678771 (2/2 replicas created)
+Events:
+  FirstSeen     LastSeen        Count   From                            SubObjectPath   Type            Reason           Message
+  ---------     --------        -----   ----                            -------------   --------        ------           -------
+  10m           10m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-4087004473 to 4
+  9m            9m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 1
+  9m            9m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 3
+  9m            9m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 2
+  9m            9m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 2
+  9m            9m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 3
+  9m            9m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 1
+  9m            9m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 4
+  9m            9m              1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 0
+  14s           14s             3       {deployment-controller }                        Normal          ScalingReplicaSet(events with common reason combined)
+[root@kubemaster deployment]# kubectl describe pod nginx-deployment
+Name:           nginx-deployment-2273492681-qm70b
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:41:14 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.2
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://3686b474077ca30917b6dd723369760efc749a32d20f933d2fb336b3edf9d966
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:17 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  9m            9m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-qm70b to 192.168.56.55
+  9m            9m              2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  9m            9m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Container image "nginx:latest" already present on machine
+  9m            9m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 3686b474077c; Security:[seccomp=unconfined]
+  9m            9m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 3686b474077c
+
+Name:           nginx-deployment-2273492681-vhwg8
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:41:14 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.4
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://9ef1103cc6e9a972cb5dd6e067bea140acf655e813d8860b68aa78b2d57fea15
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:59 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  9m            9m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-vhwg8 to 192.168.56.56
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:latest"
+  9m            9m              2       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulled           Successfully pulled image "nginx:latest"
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Created          Created container with docker id 9ef1103cc6e9; Security:[seccomp=unconfined]
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Started          Started container with docker id 9ef1103cc6e9
+
+Name:           nginx-deployment-2273492681-vxhq9
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:41:17 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.3
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://1e24dc75ea478860037488dd302e46568eee064d1c1d0d44d4a5e6d574854e2a
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:19 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  9m            9m              2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  9m            9m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-vxhq9 to 192.168.56.55
+  9m            9m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Container image "nginx:latest" already present on machine
+  9m            9m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 1e24dc75ea47; Security:[seccomp=unconfined]
+  9m            9m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 1e24dc75ea47
+
+Name:           nginx-deployment-3599678771-cg60n
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:50:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Pending
+IP:
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:
+    Image:                      nginx:1.9.1
+    Image ID:
+    Port:                       80/TCP
+    State:                      Waiting
+      Reason:                   ContainerCreating
+    Ready:                      False
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         False
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  22s           22s             1       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  22s           22s             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-cg60n to 192.168.56.56
+  21s           21s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+
+Name:           nginx-deployment-3599678771-nz37z
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:50:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Pending
+IP:
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:
+    Image:                      nginx:1.9.1
+    Image ID:
+    Port:                       80/TCP
+    State:                      Waiting
+      Reason:                   ContainerCreating
+    Ready:                      False
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         False
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  22s           22s             1       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  22s           22s             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-nz37z to 192.168.56.55
+  22s           22s             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+
+[root@kubemaster deployment]# kubectl describe pod nginx-deployment
+Name:           nginx-deployment-2273492681-qm70b
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:41:14 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.2
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://3686b474077ca30917b6dd723369760efc749a32d20f933d2fb336b3edf9d966
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:17 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  10m           10m             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-qm70b to 192.168.56.55
+  10m           10m             2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Container image "nginx:latest" already present on machine
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 3686b474077c; Security:[seccomp=unconfined]
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 3686b474077c
+
+Name:           nginx-deployment-2273492681-vhwg8
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:41:14 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.4
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://9ef1103cc6e9a972cb5dd6e067bea140acf655e813d8860b68aa78b2d57fea15
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:59 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  10m           10m             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-vhwg8 to 192.168.56.56
+  10m           10m             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:latest"
+  10m           9m              2       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulled           Successfully pulled image "nginx:latest"
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Created          Created container with docker id 9ef1103cc6e9; Security:[seccomp=unconfined]
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Started          Started container with docker id 9ef1103cc6e9
+
+Name:           nginx-deployment-2273492681-vxhq9
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:41:17 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.3
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://1e24dc75ea478860037488dd302e46568eee064d1c1d0d44d4a5e6d574854e2a
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:19 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  10m           10m             2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  10m           10m             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-vxhq9 to 192.168.56.55
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Container image "nginx:latest" already present on machine
+  9m            9m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 1e24dc75ea47; Security:[seccomp=unconfined]
+  9m            9m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 1e24dc75ea47
+
+Name:           nginx-deployment-3599678771-cg60n
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:50:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Pending
+IP:
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:
+    Image:                      nginx:1.9.1
+    Image ID:
+    Port:                       80/TCP
+    State:                      Waiting
+      Reason:                   ContainerCreating
+    Ready:                      False
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         False
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  31s           31s             1       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  31s           31s             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-cg60n to 192.168.56.56
+  30s           30s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+
+Name:           nginx-deployment-3599678771-nz37z
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:50:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Pending
+IP:
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:
+    Image:                      nginx:1.9.1
+    Image ID:
+    Port:                       80/TCP
+    State:                      Waiting
+      Reason:                   ContainerCreating
+    Ready:                      False
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         False
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  31s           31s             1       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  31s           31s             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-nz37z to 192.168.56.55
+  31s           31s             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+
+[root@kubemaster deployment]# kubectl describe pod nginx-deployment
+Name:           nginx-deployment-2273492681-qm70b
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:41:14 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.2
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://3686b474077ca30917b6dd723369760efc749a32d20f933d2fb336b3edf9d966
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:17 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  10m           10m             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-qm70b to 192.168.56.55
+  10m           10m             2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Container image "nginx:latest" already present on machine
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 3686b474077c; Security:[seccomp=unconfined]
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 3686b474077c
+
+Name:           nginx-deployment-2273492681-vhwg8
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:41:14 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.4
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://9ef1103cc6e9a972cb5dd6e067bea140acf655e813d8860b68aa78b2d57fea15
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:59 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  10m           10m             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-vhwg8 to 192.168.56.56
+  10m           10m             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:latest"
+  10m           9m              2       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulled           Successfully pulled image "nginx:latest"
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Created          Created container with docker id 9ef1103cc6e9; Security:[seccomp=unconfined]
+  9m            9m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Started          Started container with docker id 9ef1103cc6e9
+
+Name:           nginx-deployment-2273492681-vxhq9
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:41:17 +0530
+Labels:         app=nginx
+                pod-template-hash=2273492681
+Status:         Running
+IP:             172.17.0.3
+Controllers:    ReplicaSet/nginx-deployment-2273492681
+Containers:
+  nginx:
+    Container ID:               docker://1e24dc75ea478860037488dd302e46568eee064d1c1d0d44d4a5e6d574854e2a
+    Image:                      nginx:latest
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:4771d09578c7c6a65299e110b3ee1c0a2592f5ea2618d23e4ffe7a4cab1ce5de
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:41:19 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  10m           10m             2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  10m           10m             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-2273492681-vxhq9 to 192.168.56.55
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Container image "nginx:latest" already present on machine
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 1e24dc75ea47; Security:[seccomp=unconfined]
+  10m           10m             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 1e24dc75ea47
+
+Name:           nginx-deployment-3599678771-cg60n
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:50:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Pending
+IP:
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:
+    Image:                      nginx:1.9.1
+    Image ID:
+    Port:                       80/TCP
+    State:                      Waiting
+      Reason:                   ContainerCreating
+    Ready:                      False
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         False
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  32s           32s             1       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  32s           32s             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-cg60n to 192.168.56.56
+  31s           31s             1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+
+Name:           nginx-deployment-3599678771-nz37z
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:50:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Pending
+IP:
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:
+    Image:                      nginx:1.9.1
+    Image ID:
+    Port:                       80/TCP
+    State:                      Waiting
+      Reason:                   ContainerCreating
+    Ready:                      False
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         False
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  32s           32s             1       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  32s           32s             1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-nz37z to 192.168.56.55
+  32s           32s             1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+
+[root@kubemaster deployment]# kubectl get pod --show-labels
+NAME                                READY     STATUS              RESTARTS   AGE       LABELS
+nginx-deployment-2273492681-qm70b   1/1       Running             0          10m       app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vhwg8   1/1       Running             0          10m       app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vxhq9   1/1       Running             0          10m       app=nginx,pod-template-hash=2273492681
+nginx-deployment-3599678771-cg60n   0/1       ContainerCreating   0          39s       app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-nz37z   0/1       ContainerCreating   0          39s       app=nginx,pod-template-hash=3599678771
+[root@kubemaster deployment]# kubectl get pod --show-labels
+NAME                                READY     STATUS              RESTARTS   AGE       LABELS
+nginx-deployment-2273492681-qm70b   1/1       Running             0          10m       app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vhwg8   1/1       Running             0          10m       app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vxhq9   1/1       Running             0          10m       app=nginx,pod-template-hash=2273492681
+nginx-deployment-3599678771-cg60n   0/1       ContainerCreating   0          47s       app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-nz37z   0/1       ContainerCreating   0          47s       app=nginx,pod-template-hash=3599678771
+[root@kubemaster deployment]# kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+[root@kubemaster deployment]# kubectl get pod --show-labels
+NAME                                READY     STATUS              RESTARTS   AGE       LABELS
+nginx-deployment-2273492681-qm70b   1/1       Running             0          11m       app=nginx,pod-template-hash=2273492681
+nginx-deployment-2273492681-vxhq9   1/1       Terminating         0          11m       app=nginx,pod-template-hash=2273492681
+nginx-deployment-3599678771-653hs   1/1       Running             0          5s        app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-cg60n   1/1       Running             0          2m        app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-nz37z   0/1       ContainerCreating   0          2m        app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-r37nm   0/1       ContainerCreating   0          2s        app=nginx,pod-template-hash=3599678771
+[root@kubemaster deployment]# kubectl get pod --show-labels
+NAME                                READY     STATUS    RESTARTS   AGE       LABELS
+nginx-deployment-3599678771-653hs   1/1       Running   0          1m        app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-cg60n   1/1       Running   0          3m        app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-nz37z   1/1       Running   0          3m        app=nginx,pod-template-hash=3599678771
+nginx-deployment-3599678771-r37nm   1/1       Running   0          1m        app=nginx,pod-template-hash=3599678771
+[root@kubemaster deployment]# kubectl describe deployment nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Wed, 07 Mar 2018 18:40:23 +0530
+Labels:                 app=nginx
+Selector:               app=nginx
+Replicas:               4 updated | 4 total | 4 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  1 max unavailable, 1 max surge
+Conditions:
+  Type          Status  Reason
+  ----          ------  ------
+  Available     True    MinimumReplicasAvailable
+OldReplicaSets: <none>
+NewReplicaSet:  nginx-deployment-3599678771 (4/4 replicas created)
+Events:
+  FirstSeen     LastSeen        Count   From                            SubObjectPath   Type            Reason           Message
+  ---------     --------        -----   ----                            -------------   --------        ------           -------
+  14m           14m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-4087004473 to 4
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 1
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 3
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 2
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 2
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 3
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 1
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 4
+  12m           12m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 0
+  3m            1m              8       {deployment-controller }                        Normal          ScalingReplicaSet(events with common reason combined)
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         4         4            4           14m
+[root@kubemaster deployment]# kubectl describe deployment nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Wed, 07 Mar 2018 18:40:23 +0530
+Labels:                 app=nginx
+Selector:               app=nginx
+Replicas:               4 updated | 4 total | 4 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  1 max unavailable, 1 max surge
+Conditions:
+  Type          Status  Reason
+  ----          ------  ------
+  Available     True    MinimumReplicasAvailable
+OldReplicaSets: <none>
+NewReplicaSet:  nginx-deployment-3599678771 (4/4 replicas created)
+Events:
+  FirstSeen     LastSeen        Count   From                            SubObjectPath   Type            Reason           Message
+  ---------     --------        -----   ----                            -------------   --------        ------           -------
+  14m           14m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-4087004473 to 4
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 1
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 3
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 2
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 2
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 3
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 1
+  13m           13m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 4
+  12m           12m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 0
+  4m            1m              8       {deployment-controller }                        Normal          ScalingReplicaSet(events with common reason combined)
+[root@kubemaster deployment]# kubectl describe pod nginx-deployment
+Name:           nginx-deployment-3599678771-653hs
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:52:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Running
+IP:             172.17.0.3
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:               docker://ce7a3d22aa2a2557afde19bfe4dd056923b8c039d57cfb20964b407d66e44e37
+    Image:                      nginx:1.9.1
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:2f68b99bc0d6d25d0c56876b924ec20418544ff28e1fb89a4c27679a40da811b
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:52:49 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  2m            2m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-653hs to 192.168.56.56
+  2m            2m              2       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  2m            2m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulled           Container image "nginx:1.9.1" already present on machine
+  2m            2m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Created          Created container with docker id ce7a3d22aa2a; Security:[seccomp=unconfined]
+  2m            2m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Started          Started container with docker id ce7a3d22aa2a
+
+Name:           nginx-deployment-3599678771-cg60n
+Namespace:      default
+Node:           192.168.56.56/192.168.56.56
+Start Time:     Wed, 07 Mar 2018 18:50:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Running
+IP:             172.17.0.2
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:               docker://5ee55c497ed1210beb1df16fa8103c07237f8e7ee985ff32a086b54de1cd6c4a
+    Image:                      nginx:1.9.1
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:2f68b99bc0d6d25d0c56876b924ec20418544ff28e1fb89a4c27679a40da811b
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:52:45 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  4m            4m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-cg60n to 192.168.56.56
+  4m            4m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+  4m            2m              2       {kubelet 192.168.56.56}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  2m            2m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Pulled           Successfully pulled image "nginx:1.9.1"
+  2m            2m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Created          Created container with docker id 5ee55c497ed1; Security:[seccomp=unconfined]
+  2m            2m              1       {kubelet 192.168.56.56} spec.containers{nginx}  Normal          Started          Started container with docker id 5ee55c497ed1
+
+Name:           nginx-deployment-3599678771-nz37z
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:50:47 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Running
+IP:             172.17.0.4
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:               docker://75b7049649b3250a313052744c276649cd25660ea7da946a493218f305a2492b
+    Image:                      nginx:1.9.1
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:2f68b99bc0d6d25d0c56876b924ec20418544ff28e1fb89a4c27679a40da811b
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:53:16 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  4m            4m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-nz37z to 192.168.56.55
+  4m            4m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+  4m            1m              2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Successfully pulled image "nginx:1.9.1"
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 75b7049649b3; Security:[seccomp=unconfined]
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 75b7049649b3
+
+Name:           nginx-deployment-3599678771-r37nm
+Namespace:      default
+Node:           192.168.56.55/192.168.56.55
+Start Time:     Wed, 07 Mar 2018 18:52:50 +0530
+Labels:         app=nginx
+                pod-template-hash=3599678771
+Status:         Running
+IP:             172.17.0.3
+Controllers:    ReplicaSet/nginx-deployment-3599678771
+Containers:
+  nginx:
+    Container ID:               docker://6dc2c62725b7c475d43ef5d9c5ae2c6b173e382bd4d6417b91af5db8a57d4847
+    Image:                      nginx:1.9.1
+    Image ID:                   docker-pullable://docker.io/nginx@sha256:2f68b99bc0d6d25d0c56876b924ec20418544ff28e1fb89a4c27679a40da811b
+    Port:                       80/TCP
+    State:                      Running
+      Started:                  Wed, 07 Mar 2018 18:53:23 +0530
+    Ready:                      True
+    Restart Count:              0
+    Volume Mounts:              <none>
+    Environment Variables:      <none>
+Conditions:
+  Type          Status
+  Initialized   True
+  Ready         True
+  PodScheduled  True
+No volumes.
+QoS Class:      BestEffort
+Tolerations:    <none>
+Events:
+  FirstSeen     LastSeen        Count   From                    SubObjectPath           Type            Reason           Message
+  ---------     --------        -----   ----                    -------------           --------        ------           -------
+  2m            2m              1       {default-scheduler }                            Normal          Scheduled        Successfully assigned nginx-deployment-3599678771-r37nm to 192.168.56.55
+  2m            2m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulling          pulling image "nginx:1.9.1"
+  2m            1m              2       {kubelet 192.168.56.55}                         Warning         MissingClusterDNSkubelet does not have ClusterDNS IP configured and cannot create Pod using "ClusterFirst" policy. Falling back to DNSDefault policy.
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Pulled           Successfully pulled image "nginx:1.9.1"
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Created          Created container with docker id 6dc2c62725b7; Security:[seccomp=unconfined]
+  1m            1m              1       {kubelet 192.168.56.55} spec.containers{nginx}  Normal          Started          Started container with docker id 6dc2c62725b7
+
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl rollout status deployment/nginx-deployment
+deployment "nginx-deployment" successfully rolled out
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   4         4         4            4           16m
+[root@kubemaster deployment]# vi deployment_nginx.yaml
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl apply -f deployment_nginx.yaml
+deployment "nginx-deployment" configured
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         3         2            1           16m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           18m
+[root@kubemaster deployment]# kubectl rollout status deployment/nginx-deployment
+deployment "nginx-deployment" successfully rolled out
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl describe deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Wed, 07 Mar 2018 18:40:23 +0530
+Labels:                 app=nginx
+Selector:               app=nginx
+Replicas:               2 updated | 2 total | 2 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  1 max unavailable, 1 max surge
+Conditions:
+  Type          Status  Reason
+  ----          ------  ------
+  Available     True    MinimumReplicasAvailable
+OldReplicaSets: <none>
+NewReplicaSet:  nginx-deployment-2273492681 (2/2 replicas created)
+Events:
+  FirstSeen     LastSeen        Count   From                            SubObjectPath   Type            Reason           Message
+  ---------     --------        -----   ----                            -------------   --------        ------           -------
+  18m           18m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-4087004473 to 4
+  17m           17m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 3
+  17m           17m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 2
+  17m           17m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 2
+  17m           17m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 3
+  17m           17m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 4
+  17m           17m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 1
+  16m           16m             1       {deployment-controller }                        Normal          ScalingReplicaSetScaled down replica set nginx-deployment-4087004473 to 0
+  17m           1m              2       {deployment-controller }                        Normal          ScalingReplicaSetScaled up replica set nginx-deployment-2273492681 to 1
+  8m            1m              12      {deployment-controller }                        Normal          ScalingReplicaSet(events with common reason combined)
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+REVISION        CHANGE-CAUSE
+1               kubectl create -f deployment_nginx.yaml --record
+3               kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+4               kubectl apply -f deployment_nginx.yaml
+
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment --revision=3
+deployments "nginx-deployment" with revision #3
+  Labels:       app=nginx
+        pod-template-hash=3599678771
+  Annotations:  kubernetes.io/change-cause=kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+  Containers:
+   nginx:
+    Image:      nginx:1.9.1
+    Port:       80/TCP
+    Volume Mounts:      <none>
+    Environment Variables:      <none>
+  No volumes.
+
+[root@kubemaster deployment]# kubectl rollout status deployment/nginx-deployment
+deployment "nginx-deployment" successfully rolled out
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           20m
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+REVISION        CHANGE-CAUSE
+1               kubectl create -f deployment_nginx.yaml --record
+3               kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+4               kubectl apply -f deployment_nginx.yaml
+
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment --revision=1
+deployments "nginx-deployment" with revision #1
+  Labels:       app=nginx
+        pod-template-hash=4087004473
+  Annotations:  kubernetes.io/change-cause=kubectl create -f deployment_nginx.yaml --record
+  Containers:
+   nginx:
+    Image:      nginx:1.7.9
+    Port:       80/TCP
+    Volume Mounts:      <none>
+    Environment Variables:      <none>
+  No volumes.
+
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           20m
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment
+deployment "nginx-deployment" rolled back
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         3         2            1           21m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           21m
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --version=1
+deployment "nginx-deployment" rolled back
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         3         2            1           22m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            1           23m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           23m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           23m
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --version=2
+Error: invalid argument "2" for --version=2: strconv.ParseBool: parsing "2": invalid syntax
+
+
+Examples:
+  # Rollback to the previous deployment
+  kubectl rollout undo deployment/abc
+
+  # Rollback to deployment revision 3
+  kubectl rollout undo deployment/abc --to-revision=3
+
+  # Rollback to the previous deployment with dry-run
+  kubectl rollout undo --dry-run=true deployment/abc
+
+Options:
+      --dry-run=false: If true, only print the object that would be sent, without sending it.
+  -f, --filename=[]: Filename, directory, or URL to files identifying the resource to get from a server.
+  -R, --recursive=false: Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --to-revision=0: The revision to rollback to. Default to 0 (last revision).
+
+Usage:
+  kubectl rollout undo (TYPE NAME | TYPE/NAME) [flags] [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+
+Error: invalid argument "2" for --version=2: strconv.ParseBool: parsing "2": invalid syntax
+invalid argument "2" for --version=2: strconv.ParseBool: parsing "2": invalid syntax[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --version=3
+Error: invalid argument "3" for --version=3: strconv.ParseBool: parsing "3": invalid syntax
+
+
+Examples:
+  # Rollback to the previous deployment
+  kubectl rollout undo deployment/abc
+
+  # Rollback to deployment revision 3
+  kubectl rollout undo deployment/abc --to-revision=3
+
+  # Rollback to the previous deployment with dry-run
+  kubectl rollout undo --dry-run=true deployment/abc
+
+Options:
+      --dry-run=false: If true, only print the object that would be sent, without sending it.
+  -f, --filename=[]: Filename, directory, or URL to files identifying the resource to get from a server.
+  -R, --recursive=false: Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --to-revision=0: The revision to rollback to. Default to 0 (last revision).
+
+Usage:
+  kubectl rollout undo (TYPE NAME | TYPE/NAME) [flags] [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+
+Error: invalid argument "3" for --version=3: strconv.ParseBool: parsing "3": invalid syntax
+invalid argument "3" for --version=3: strconv.ParseBool: parsing "3": invalid syntax[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl rollout status deployment/nginx-deployment
+deployment "nginx-deployment" successfully rolled out
+[root@kubemaster deployment]# kubectl rollout list deployment/nginx-deployment
+error: unknown command "list deployment/nginx-deployment"
+See 'kubectl rollout -h' for help and examples.
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+REVISION        CHANGE-CAUSE
+1               kubectl create -f deployment_nginx.yaml --record
+5               kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+6               kubectl apply -f deployment_nginx.yaml
+
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --version=6
+Error: invalid argument "6" for --version=6: strconv.ParseBool: parsing "6": invalid syntax
+
+
+Examples:
+  # Rollback to the previous deployment
+  kubectl rollout undo deployment/abc
+
+  # Rollback to deployment revision 3
+  kubectl rollout undo deployment/abc --to-revision=3
+
+  # Rollback to the previous deployment with dry-run
+  kubectl rollout undo --dry-run=true deployment/abc
+
+Options:
+      --dry-run=false: If true, only print the object that would be sent, without sending it.
+  -f, --filename=[]: Filename, directory, or URL to files identifying the resource to get from a server.
+  -R, --recursive=false: Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --to-revision=0: The revision to rollback to. Default to 0 (last revision).
+
+Usage:
+  kubectl rollout undo (TYPE NAME | TYPE/NAME) [flags] [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+
+Error: invalid argument "6" for --version=6: strconv.ParseBool: parsing "6": invalid syntax
+invalid argument "6" for --version=6: strconv.ParseBool: parsing "6": invalid syntax[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+REVISION        CHANGE-CAUSE
+1               kubectl create -f deployment_nginx.yaml --record
+5               kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+6               kubectl apply -f deployment_nginx.yaml
+
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --version=5
+Error: invalid argument "5" for --version=5: strconv.ParseBool: parsing "5": invalid syntax
+
+
+Examples:
+  # Rollback to the previous deployment
+  kubectl rollout undo deployment/abc
+
+  # Rollback to deployment revision 3
+  kubectl rollout undo deployment/abc --to-revision=3
+
+  # Rollback to the previous deployment with dry-run
+  kubectl rollout undo --dry-run=true deployment/abc
+
+Options:
+      --dry-run=false: If true, only print the object that would be sent, without sending it.
+  -f, --filename=[]: Filename, directory, or URL to files identifying the resource to get from a server.
+  -R, --recursive=false: Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --to-revision=0: The revision to rollback to. Default to 0 (last revision).
+
+Usage:
+  kubectl rollout undo (TYPE NAME | TYPE/NAME) [flags] [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+
+Error: invalid argument "5" for --version=5: strconv.ParseBool: parsing "5": invalid syntax
+invalid argument "5" for --version=5: strconv.ParseBool: parsing "5": invalid syntax[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --to-version=1
+Error: unknown flag: --to-version
+
+
+Examples:
+  # Rollback to the previous deployment
+  kubectl rollout undo deployment/abc
+
+  # Rollback to deployment revision 3
+  kubectl rollout undo deployment/abc --to-revision=3
+
+  # Rollback to the previous deployment with dry-run
+  kubectl rollout undo --dry-run=true deployment/abc
+
+Options:
+      --dry-run=false: If true, only print the object that would be sent, without sending it.
+  -f, --filename=[]: Filename, directory, or URL to files identifying the resource to get from a server.
+  -R, --recursive=false: Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --to-revision=0: The revision to rollback to. Default to 0 (last revision).
+
+Usage:
+  kubectl rollout undo (TYPE NAME | TYPE/NAME) [flags] [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+
+Error: unknown flag: --to-version
+unknown flag: --to-version[rookubectl rollout undo deployment/nginx-deployment --to-version=1
+Error: unknown flag: --to-version
+
+
+Examples:
+  # Rollback to the previous deployment
+  kubectl rollout undo deployment/abc
+
+  # Rollback to deployment revision 3
+  kubectl rollout undo deployment/abc --to-revision=3
+
+  # Rollback to the previous deployment with dry-run
+  kubectl rollout undo --dry-run=true deployment/abc
+
+Options:
+      --dry-run=false: If true, only print the object that would be sent, without sending it.
+  -f, --filename=[]: Filename, directory, or URL to files identifying the resource to get from a server.
+  -R, --recursive=false: Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --to-revision=0: The revision to rollback to. Default to 0 (last revision).
+
+Usage:
+  kubectl rollout undo (TYPE NAME | TYPE/NAME) [flags] [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+
+Error: unknown flag: --to-version
+unknown flag: --to-version[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+REVISION        CHANGE-CAUSE
+1               kubectl create -f deployment_nginx.yaml --record
+5               kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+6               kubectl apply -f deployment_nginx.yaml
+
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --to-version=5
+Error: unknown flag: --to-version
+
+
+Examples:
+  # Rollback to the previous deployment
+  kubectl rollout undo deployment/abc
+
+  # Rollback to deployment revision 3
+  kubectl rollout undo deployment/abc --to-revision=3
+
+  # Rollback to the previous deployment with dry-run
+  kubectl rollout undo --dry-run=true deployment/abc
+
+Options:
+      --dry-run=false: If true, only print the object that would be sent, without sending it.
+  -f, --filename=[]: Filename, directory, or URL to files identifying the resource to get from a server.
+  -R, --recursive=false: Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --to-revision=0: The revision to rollback to. Default to 0 (last revision).
+
+Usage:
+  kubectl rollout undo (TYPE NAME | TYPE/NAME) [flags] [options]
+
+Use "kubectl options" for a list of global command-line options (applies to all commands).
+
+Error: unknown flag: --to-version
+unknown flag: --to-version[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+REVISION        CHANGE-CAUSE
+1               kubectl create -f deployment_nginx.yaml --record
+5               kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+6               kubectl apply -f deployment_nginx.yaml
+
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --to-revision=5
+deployment "nginx-deployment" rolled back
+[root@kubemaster deployment]# kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+REVISION        CHANGE-CAUSE
+1               kubectl create -f deployment_nginx.yaml --record
+6               kubectl apply -f deployment_nginx.yaml
+7               kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           25m
+[root@kubemaster deployment]# kubectl rollout undo deployment/nginx-deployment --to-revision=1
+deployment "nginx-deployment" rolled back
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         3         2            1           25m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         3         2            1           25m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           25m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           25m
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl autoscale deployment nginx-deployment --min=10 --max=15 --cpu-percent=80
+deployment "nginx-deployment" autoscaled
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   10        10        10           2           29m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   10        10        10           10          29m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   10        10        10           10          29m
+[root@kubemaster deployment]# kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   10        10        10           10          31m
+[root@kubemaster deployment]# kubectl get pods
+NAME                                READY     STATUS    RESTARTS   AGE
+nginx-deployment-4087004473-064kt   1/1       Running   0          1m
+nginx-deployment-4087004473-0nsmc   1/1       Running   0          1m
+nginx-deployment-4087004473-2kszg   1/1       Running   0          6m
+nginx-deployment-4087004473-47xnk   1/1       Running   0          1m
+nginx-deployment-4087004473-7xm5s   1/1       Running   0          1m
+nginx-deployment-4087004473-8mb64   1/1       Running   0          6m
+nginx-deployment-4087004473-8q5j3   1/1       Running   0          1m
+nginx-deployment-4087004473-g7wxg   1/1       Running   0          1m
+nginx-deployment-4087004473-khtpx   1/1       Running   0          1m
+nginx-deployment-4087004473-v4xks   1/1       Running   0          1m
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get pods -o wide
+NAME                                READY     STATUS    RESTARTS   AGE       IP           NODE
+nginx-deployment-4087004473-064kt   1/1       Running   0          2m        172.17.0.6   192.168.56.55
+nginx-deployment-4087004473-0nsmc   1/1       Running   0          2m        172.17.0.4   192.168.56.56
+nginx-deployment-4087004473-2kszg   1/1       Running   0          6m        172.17.0.3   192.168.56.56
+nginx-deployment-4087004473-47xnk   1/1       Running   0          2m        172.17.0.2   192.168.56.56
+nginx-deployment-4087004473-7xm5s   1/1       Running   0          2m        172.17.0.5   192.168.56.55
+nginx-deployment-4087004473-8mb64   1/1       Running   0          6m        172.17.0.2   192.168.56.55
+nginx-deployment-4087004473-8q5j3   1/1       Running   0          2m        172.17.0.5   192.168.56.56
+nginx-deployment-4087004473-g7wxg   1/1       Running   0          2m        172.17.0.3   192.168.56.55
+nginx-deployment-4087004473-khtpx   1/1       Running   0          2m        172.17.0.4   192.168.56.55
+nginx-deployment-4087004473-v4xks   1/1       Running   0          2m        172.17.0.6   192.168.56.56
+[root@kubemaster deployment]# kubectl get service
+NAME         CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   10.254.0.1   <none>        443/TCP   6d
+[root@kubemaster deployment]# kubectl get service --namespace=defaut
+No resources found.
+[root@kubemaster deployment]# kubectl get service --namespace=default
+NAME         CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   10.254.0.1   <none>        443/TCP   6d
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get service --namespace=default
+NAME         CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   10.254.0.1   <none>        443/TCP   6d
+[root@kubemaster deployment]# vi /etc/etcd/etcd.conf
+[root@kubemaster deployment]# vi /etc/kubernetes/
+apiserver           config              controller-manager  kubelet             proxy               scheduler
+[root@kubemaster deployment]# vi /etc/kubernetes/config
+[root@kubemaster deployment]# vi /etc/kubernetes/proxy
+[root@kubemaster deployment]# vi /etc/kubernetes/scheduler
+[root@kubemaster deployment]# vi /etc/kubernetes/controller-manager
+[root@kubemaster deployment]# vi /etc/kubernetes/apiserver
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# vi /etc/kubernetes/controller-manager
+[root@kubemaster deployment]# vi /etc/kubernetes/apiserver
+[root@kubemaster deployment]#
+[root@kubemaster deployment]# kubectl get service --namespace=default
+NAME         CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   10.254.0.1   <none>        443/TCP   6d
+[root@kubemaster deployment]#
+
