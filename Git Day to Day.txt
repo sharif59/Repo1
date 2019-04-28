@@ -103,6 +103,8 @@ $ git reset --hard HEAD~1 && git push -f origin master
 Fetching
 Fetch changes from upstream:
 
+
+
 $ git fetch upstream
 Fetch changes from both origin and upstream in the same shot:
 
